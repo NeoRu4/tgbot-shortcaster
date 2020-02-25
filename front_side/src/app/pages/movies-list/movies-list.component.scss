@@ -1,0 +1,63 @@
+.search {
+
+    width: 100%;
+    display: flex;
+    justify-content: center;
+
+    ui-input {
+        max-width: 350px;
+    }
+ 
+}
+.wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.table {
+    margin-top: 30px;
+    
+    .head-row {
+        display: flex;
+        flex-direction: row;
+        padding: 15px;
+        width: 100%;
+        background-color: #ff53a39f;
+
+        span[class*="icon"] {
+            display: inline-flex;
+            font-size: 10px;
+            
+            &.up {
+                transform: rotate(-180deg);
+            }
+        }
+    }
+
+    .item {
+        display: flex;
+        flex-direction: row;
+        padding: 15px;
+        width: 100%;
+        background-color: #fca6ce9f;
+
+        &:hover {
+            background-color: #fa80b99f;
+        }
+    }
+
+
+    .name {
+        width: 100%;
+        max-width: 70%;
+    }
+
+    .year {
+        width: 100%;
+        max-width: 30%;
+    }
+}
+
+h2 {
+    text-align: center;
+}
