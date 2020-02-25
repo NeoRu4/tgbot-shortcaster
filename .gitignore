@@ -24,4 +24,4 @@ hs_err_pid*
 .idea/*
 target/*
 
-russian_gtp2/model/
+russian_gtp2/models/*
