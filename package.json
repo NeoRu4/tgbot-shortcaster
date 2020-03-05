@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "tsc init.js",
+    "start": "ts-node init.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -16,5 +16,11 @@
   "bugs": {
     "url": "https://github.com/NeoRu4/graduate_work/issues"
   },
-  "homepage": "https://github.com/NeoRu4/graduate_work#readme"
+  "homepage": "https://github.com/NeoRu4/graduate_work#readme",
+  "dependencies": {
+    "fs": "0.0.1-security"
+  },
+  "devDependencies": {
+    "@types/node": "^13.7.7"
+  }
 }
