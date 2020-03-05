@@ -1,5 +1,0 @@
-profile: service
-defaultPackage: lab
----
-testFramework: junit
-sourceLanguage: java
