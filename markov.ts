@@ -5,10 +5,10 @@ export class Markov {
     private lexemeMap: Map<string, Array<string>> = new Map();
     private initText: string = '';
     private sentenceCount: number;
-    
+
     private readonly MIN_WORD_SIZE_ON_END: number = 4;
-    private readonly PUNCT_MARKS = /[.!?]/g;
-    
+    private readonly PUNCT_MARKS = /[.!?]{1,}$/g;
+
     private _resultText = '';
 
     get resultText(): string {
@@ -21,57 +21,69 @@ export class Markov {
         this.sentenceCount = sentenceCount;
 
         this._prepareLexems(this.initText);
+        console.log(this.lexemeMap);
         this.generateText();
     }
 
     private _prepareLexems(text: string) {
-        
+
         if (!text) {
             throw new Error('Не указана строка');
         }
 
-        let parsableString = text   
+        let parsableString = text
                             .replace(/[\r\n\t]/gm, ' ')               //Убираем переносы
                             .replace(/(\s+)/g, ' ')                 //Убираем множество пробелов
-                            .replace(/[^a-zёа-я0-9 -!?.,]/gi, ' ')  //Очищаем ненужные буквы 
+                            .replace(/[^a-zёа-я0-9 -!?.,]/gi, ' ')  //Очищаем ненужные буквы
+                            .replace(/\s([,.!?])/g, '$1')
                             .replace(/\.+/gm, '.');                 //Убираем многоточия
-                                
+
         const wordsArray = parsableString.split(' ');
- 
+
         let lexemeMap = new Map();
-        
+        let isEndOfSentence = false;
+        let dataSentence = [];
         for (let key = 0; key < wordsArray.length; key++) {
 
-            if (!wordsArray[key + 1]) {
+            let word = wordsArray[key].trim();
+
+            if (!word || word == '') {
                 continue;
             }
 
-            let word = wordsArray[key];
+            dataSentence.push(word);
 
-            let previousWord = wordsArray[key - 1] || null;
-            word = Utils.trimUpperIfHaveDots(word, previousWord).trim();
-            
-            if (word.length < 1) {
-                continue;
+            if (word.match(this.PUNCT_MARKS)) {
+                word = word.replace(this.PUNCT_MARKS, '');
+                dataSentence.push(word);
             }
 
-            let nextWord = wordsArray[key + 1];
-            nextWord = Utils.trimUpperIfHaveDots(nextWord, word).trim();
+            if (isEndOfSentence) {
+                dataSentence = dataSentence.filter(val => !val.match(this.PUNCT_MARKS));
+                Markov.addSentenceData(lexemeMap, dataSentence);
+                dataSentence = [word];
+                isEndOfSentence = false;
+            }
 
-            Utils.pushArrayInToMap(lexemeMap, word, nextWord);
+            if (word.match(/[,.!?]{1,}$/g)) {
+                isEndOfSentence = true;
+            }
 
-            // //Если слово со спец символом, нужно добавить без него
-            // if (word.match(this.PUNCT_MARKS)) {
-            //     const wordWOSpecChar = word.replace(this.PUNCT_MARKS, '');
-            //     Utils.pushArrayInToMap(lexemeMap, wordWOSpecChar, nextWord );
-            // }
-            
         }
+
+        Markov.addSentenceData(lexemeMap, dataSentence);
 
         this.lexemeMap = lexemeMap;
 
     }
-    
+
+    static addSentenceData(lexemeMap, dataSentence: Array<string>) {
+        for (let i = 0; i < dataSentence.length; i++) {
+            const element = dataSentence[i];
+            Utils.pushArrayInToMap(lexemeMap, element, dataSentence.slice(i + 1))
+        }
+    }
+
     generateText() {
 
         if (this.lexemeMap.size < 1) {
@@ -90,27 +102,9 @@ export class Markov {
             const fixedSentenceLenght = Utils.randomInt(5, 18);
 
             //Пока не выпадет конец предложения
-            while (!word.match(this.PUNCT_MARKS)) { 
-                const sentenceLen = sentence.length
-                if (sentenceLen >= fixedSentenceLenght) {
+            while (!word.match(this.PUNCT_MARKS)) {
 
-                    let wordIndx = sentenceLen - 1;
-                    let lastWord = sentence[wordIndx];
-
-                    while (lastWord.length < this.MIN_WORD_SIZE_ON_END) {
-
-                        sentence.pop();
-                        lastWord = sentence[--wordIndx];
-                        sentence[wordIndx] = lastWord.replace(/[,]/g, ''); 
-                    }
-                
-
-
-                    if (!lastWord.match(/[.!?]$/g)) {
-                        sentence.push('.')
-                    }
-                    break;
-                }
+                const sentenceLen = sentence.length;
 
                 word = this._getRandomWord(word);
 
@@ -119,6 +113,25 @@ export class Markov {
                 }
 
                 sentence.push(word);
+
+                if (sentenceLen >= fixedSentenceLenght) {
+
+                    let wordIndx = sentenceLen - 1;
+                    let lastWord = sentence[wordIndx];
+
+                    while (lastWord.length < this.MIN_WORD_SIZE_ON_END) {
+
+                        sentence.pop();
+                        wordIndx--;
+                        lastWord = sentence[wordIndx];
+                        sentence[wordIndx] = lastWord.replace(/[,]/g, '');
+                    }
+
+                    if (!lastWord.match(this.PUNCT_MARKS)) {
+                        sentence.push('.');
+                    }
+                    break;
+                }
             }
 
             this._resultText += sentence.join(' ') + ' ';

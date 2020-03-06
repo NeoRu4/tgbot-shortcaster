@@ -2,8 +2,8 @@ export class Utils {
 
     //Если в предыдущей строке есть знаки препинания
     static trimUpperIfHaveDots(word: string, previous: string): string {
-        
-        if (previous && !word.match('[.!?]') || 
+
+        if (previous && !word.match('[.!?]') ||
             !word.match('/[A-ZА-Я]/g')) {
 
             return word
@@ -12,10 +12,14 @@ export class Utils {
         return word.toLowerCase();
     }
 
-    static pushArrayInToMap(arrayMap: Map<string, Array<any>>, key: string, value: any) {
-        let wordArrayFromMap = arrayMap.get(key) || []
-        wordArrayFromMap.push(value)
-        arrayMap.set(value, wordArrayFromMap)
+    static pushArrayInToMap(arrayMap: Map<string, Array<any>>, key: string, value: Array<any>) {
+
+        if (!value) {
+            return;
+        }
+        value = value.filter(val => key != val);
+        let wordArrayFromMap = arrayMap.get(key) || [];
+        arrayMap.set(key, wordArrayFromMap.concat(value))
     }
 
     static capitalizeFirstLetter(str: string) {
