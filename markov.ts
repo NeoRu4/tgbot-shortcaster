@@ -15,7 +15,7 @@ export class Markov {
         return this._resultText;
     }
 
-    constructor(text: string, sentenceCount: number = 5) {
+    constructor(text: string, sentenceCount: number = 2) {
 
         this.initText = text;
         this.sentenceCount = sentenceCount;
@@ -53,10 +53,10 @@ export class Markov {
 
             dataSentence.push(word);
 
-            if (word.match(this.PUNCT_MARKS)) {
-                word = word.replace(this.PUNCT_MARKS, '');
-                dataSentence.push(word);
-            }
+            // if (word.match(this.PUNCT_MARKS)) {
+            //     word = word.replace(this.PUNCT_MARKS, '');
+            //     dataSentence.push(word);
+            // }
 
             if (isEndOfSentence) {
                 dataSentence = dataSentence.filter(val => !val.match(this.PUNCT_MARKS));
@@ -104,7 +104,6 @@ export class Markov {
             //Пока не выпадет конец предложения
             while (!word.match(this.PUNCT_MARKS)) {
 
-                const sentenceLen = sentence.length;
 
                 word = this._getRandomWord(word);
 
@@ -114,6 +113,7 @@ export class Markov {
 
                 sentence.push(word);
 
+                const sentenceLen = sentence.length;
                 if (sentenceLen >= fixedSentenceLenght) {
 
                     let wordIndx = sentenceLen - 1;

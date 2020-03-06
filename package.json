@@ -18,8 +18,9 @@
   },
   "homepage": "https://github.com/NeoRu4/graduate_work#readme",
   "dependencies": {
-    "fs": "0.0.1-security",
     "@types/node": "^13.7.7",
+    "fs": "0.0.1-security",
+    "lodash": "^4.17.15",
     "ts-node": "^8.6.2",
     "typescript": "^3.8.3"
   },
