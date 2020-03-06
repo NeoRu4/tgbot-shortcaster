@@ -60,11 +60,11 @@ export class Markov {
 
             Utils.pushArrayInToMap(lexemeMap, word, nextWord);
 
-            // //Если слово со спец символом, нужно добавить без него
-            // if (word.match(this.PUNCT_MARKS)) {
-            //     const wordWOSpecChar = word.replace(this.PUNCT_MARKS, '');
-            //     Utils.pushArrayInToMap(lexemeMap, wordWOSpecChar, nextWord );
-            // }
+            //Если слово со спец символом, нужно добавить без него
+            if (word.match(this.PUNCT_MARKS)) {
+                const wordWOSpecChar = word.replace(this.PUNCT_MARKS, '');
+                Utils.pushArrayInToMap(lexemeMap, wordWOSpecChar, nextWord );
+            }
             
         }
 
@@ -100,11 +100,10 @@ export class Markov {
                     while (lastWord.length < this.MIN_WORD_SIZE_ON_END) {
 
                         sentence.pop();
-                        lastWord = sentence[--wordIndx];
+                        wordIndx--;
+                        lastWord = sentence[wordIndx];
                         sentence[wordIndx] = lastWord.replace(/[,]/g, ''); 
                     }
-                
-
 
                     if (!lastWord.match(/[.!?]$/g)) {
                         sentence.push('.')

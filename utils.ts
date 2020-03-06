@@ -33,4 +33,18 @@ export class Utils {
     static getRandomItemFromArray(array: Array<any>) {
         return array[Math.floor(this.randomInt(0, array.length))];
     }
+
+    static stringToSentenceArray(text: string): Array<string> {
+        let readyText = text   
+                .replace(/[\r\n\t]/gm, ' ')
+                .replace(/[;]/gm, '.')
+                // .replace(/[^a-zёа-я0-9 -!?.,]/gi, ' ')  
+                .replace(/(\s+)/g, ' ')                   
+                .replace(/([-!?.,])+/g, '$1')
+                .replace(/([.!?])/g, '$1; ')
+
+        return readyText.split(';')
+                        .map(value => value.trim())
+                        .filter(value => value && value.length > 0)
+    }
 }
