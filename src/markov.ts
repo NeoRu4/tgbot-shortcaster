@@ -20,7 +20,7 @@ export type MarkovConstructorOptions = {
 export type MarkovResult = {
   string: string,
   score: number,
-  refs: Array<{ string: string }>,
+  refs: Array<string>,
   tries: number
 }
 
@@ -29,7 +29,9 @@ export type MarkovFragment = {
   refs: Array<{ string: string }>
 }
 
-export type LexemeMap = { [key: string]: MarkovFragment[] }
+export type LexemeMap = { 
+  [key: string]: MarkovFragment[] 
+}
 
 export class Markov {
 
@@ -65,6 +67,7 @@ export class Markov {
     const options = this.options;
 
     this.data.forEach(item => {
+
       const line = item.string;
       const words = line.split(' ');
       const stateSize = options.stateSize!;
@@ -78,8 +81,10 @@ export class Markov {
       this._makeWordsFragment(this.endWords, item, end);
 
       for (let i = 0; i < words.length - 1; i++) {
+
         const curr = slice(words, i, i + stateSize).join(' ');
         const next = slice(words, i + stateSize, i + stateSize * 2).join(' ');
+
         if (!next || next.split(' ').length !== options.stateSize) {
           continue;
         }
@@ -92,7 +97,7 @@ export class Markov {
         }
       }
     })
-    console.log( this.lexemeTable)
+    // console.log( this.lexemeTable)
   }
 
   private _makeWordsFragment(fragment: MarkovFragment[], item: {string: string},  joinedString: string ) {
@@ -123,7 +128,6 @@ export class Markov {
       let ended = false;
 
       const arr = [getRandom(this.startWords, prng)!];
-
       let score = 0
 
       for (let innerTries = 0; innerTries < maxTries; innerTries++) {
@@ -164,34 +168,6 @@ export class Markov {
       return result
     }
     throw new Error(`Failed to build a sentence after ${tries - 1} tries`)
-  }
-
-  public buildModel(): Observable<boolean> {
-    return new Observable(suscriber => {
-        try {
-            this.buildLexemeTable();
-            suscriber.next(true);
-        } catch (error) {
-            suscriber.error()
-        } finally {
-            suscriber.complete();
-        }
-
-    })
-  }
-
-  public generateText(options: MarkovGenerateOptions = {}): Observable<MarkovResult> {
-    return new Observable(suscriber => {
-        try {
-            const result = this.generateSentence(options);
-            suscriber.next(result);
-        } catch (error) {
-            suscriber.error()
-        } finally {
-            suscriber.complete();
-        }
-
-    })
   }
 
 }

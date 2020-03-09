@@ -1,4 +1,4 @@
-import { Utils } from "./utils";
+import { Utils } from "./src/utils/utils";
 
 export class Markov {
 

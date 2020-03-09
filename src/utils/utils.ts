@@ -51,4 +51,16 @@ export class Utils {
                         .map(value => value.trim())
                         .filter(value => value && value.length > 0)
     }
+
+    static modifyMessage(text: string) {
+
+        let message = text;
+
+        if (!(/[.!?]$/g).test(message) ) {
+            message += '.';
+        }
+
+        return message
+    }
+    
 }
