@@ -65,6 +65,8 @@ export class UserMarkovTextMethod extends AbstractMethod {
             return;
         }
 
+        console.log('found user', user)
+        
         this.sendMarkovText(chatId, user);
 
     }
@@ -85,8 +87,10 @@ export class UserMarkovTextMethod extends AbstractMethod {
         let messageFullText = memberMessages.map(message => message.text).join(' ');
 
         const sentenceArray = Utils.stringToSentenceArray(messageFullText);
-
-        let markovSentences = MarkovTextMethod.generateUniqueText(sentenceArray, 1, options);
+        if (sentenceArray.length < 5) {
+            return;
+        }
+        let markovSentences = MarkovTextMethod.generateUniqueText(sentenceArray, 5, options);
         let rngScore = markovSentences.map(val => val.score).reduce((a, b) => a + b, 0 )
 
         let markovText = markovSentences.map(val => val.string).join(' ');
@@ -152,7 +156,12 @@ export class UserMarkovTextMethod extends AbstractMethod {
         
         try {
             const file = fs.readFileSync(this.fileName, 'utf8');
-            return JSON.parse(file);
+            let userArray = JSON.parse(file)
+                .sort((a,b) => {
+                    return a?.username?.length - b?.username?.length
+                });
+
+            return userArray;
 
         } catch (err) {
             return [];
