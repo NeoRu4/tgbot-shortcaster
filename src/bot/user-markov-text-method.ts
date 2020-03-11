@@ -5,16 +5,16 @@ import { WriteMarkovMethod } from './write-markov-method';
 import { Subject } from 'rxjs';
 import {bufferTime, filter} from 'rxjs/operators'
 import * as fs from 'fs';
-import { MarkovGenerateOptions } from '../markov';
+import { MarkovGenerateOptions, MarkovConstructorOptions } from '../markov';
 import { Utils } from '../utils/utils';
 import { MarkovTextMethod } from './markov-text-method';
 
 export class UserMarkovTextMethod extends AbstractMethod {
 
     private writeMarkov: WriteMarkovMethod;
-   
+
     private readonly DATA_DIR = './database/user/';
-    
+
     chatMemberSubject: Subject<User> = new Subject();
 
     constructor(_apiEmmiter: TelegramBotEmitter, writeMarkovInstance: WriteMarkovMethod) {
@@ -32,7 +32,11 @@ export class UserMarkovTextMethod extends AbstractMethod {
             this.appendMessageDataFile(chatMemberList);
         });
     }
-    
+
+    defaultOptions: MarkovConstructorOptions = {
+        stateSize: 2
+    };
+
     process(message: Message) {
 
         const text = message.text.trim();
@@ -57,7 +61,7 @@ export class UserMarkovTextMethod extends AbstractMethod {
             this.updateChatUsersList(chatId);
 
             this.api.sendMessage({
-                chat_id: chatId, 
+                chat_id: chatId,
                 text: `Пользователь "${userName}" не найден.`,
                 parse_mode: 'markdown'
             });
@@ -66,7 +70,7 @@ export class UserMarkovTextMethod extends AbstractMethod {
         }
 
         console.log('found user', user)
-        
+
         this.sendMarkovText(chatId, user);
 
     }
@@ -80,9 +84,10 @@ export class UserMarkovTextMethod extends AbstractMethod {
                 return (/[.!?]$/g).test(result.string)
               }
         }
-        
+
         let memberMessages = this.writeMarkov.readMessageDataFile(chatId);
         memberMessages = memberMessages.filter(val => val.senderId == user.id);
+        // memberMessages = memberMessages.slice(memberMessages.length - 50);
 
         let messageFullText = memberMessages.map(message => message.text).join(' ');
 
@@ -90,16 +95,16 @@ export class UserMarkovTextMethod extends AbstractMethod {
         if (sentenceArray.length < 5) {
             return;
         }
-        let markovSentences = MarkovTextMethod.generateUniqueText(sentenceArray, 5, options);
+        let markovSentences = MarkovTextMethod.generateUniqueText(sentenceArray, 5, this.defaultOptions, options);
         let rngScore = markovSentences.map(val => val.score).reduce((a, b) => a + b, 0 )
 
         let markovText = markovSentences.map(val => val.string).join(' ');
         markovText += `\n\n*count*: ${memberMessages.length} msgs; ${sentenceArray.length} sentences`;
         markovText += `\n*rng score*: ${rngScore} to ${markovSentences.length} sentences`;
-        markovText += `\n*user*: ${user.username} - ${user.first_name || ''} ${user.last_name || ''}`;
+        markovText += `\n${user.username ? '@' + user.username : ''} - ${user.first_name || ''} ${user.last_name || ''}`;
 
         this.api.sendMessage({
-            chat_id: chatId, 
+            chat_id: chatId,
             text: markovText,
             parse_mode: 'markdown'
         })
@@ -110,9 +115,9 @@ export class UserMarkovTextMethod extends AbstractMethod {
         let userIds = this.writeMarkov.readMessageDataFile(chatId)
             .map(val => val.senderId)
             .filter((value, index, self) => {
-                return self.indexOf(value) === index; //Unique 
+                return self.indexOf(value) === index; //Unique
             });
-        
+
         userIds.forEach(val => {
 
             this.api.getChatMember({
@@ -128,14 +133,14 @@ export class UserMarkovTextMethod extends AbstractMethod {
 
         let userData = this.readUserDataFile();
         userData = userData
-                .filter(user => 
+                .filter(user =>
                     !includeData.find(_user => _user.id == user.id)
                 )
                 .concat(includeData);
 
-        
+
         fs.writeFileSync(
-            this.fileName, 
+            this.fileName,
             JSON.stringify(userData),
             {flag: 'w+', encoding: 'utf-8'}
         );
@@ -153,7 +158,7 @@ export class UserMarkovTextMethod extends AbstractMethod {
     }
 
     readUserDataFile(): Array<User> {
-        
+
         try {
             const file = fs.readFileSync(this.fileName, 'utf8');
             let userArray = JSON.parse(file)
@@ -171,8 +176,8 @@ export class UserMarkovTextMethod extends AbstractMethod {
     get fileName(): string {
         let file = this.DATA_DIR + 'chat-users.json';
         file = file.replace(/[\\]/g, '/');
-        
+
         return file
     }
-    
+
 }

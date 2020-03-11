@@ -19,7 +19,7 @@ export class TelegramBot {
 
 
     constructor() {
-        
+
         this.botApi = new TelegramBotEmitter(Config.bot);
 
         this.botApi.on('message', message => this.messageHandler(message));
@@ -27,24 +27,24 @@ export class TelegramBot {
         this.botApi.on('error', message => {
             console.error(message);
         });
-        
+
         this.routeMap = [
             {
-                command: '', 
+                command: '',
                 instance: new WriteMarkovMethod(this.botApi)
             },
         ];
-    
+
         this.routeMap.push({
-            command: '/markov', 
+            command: '/m',
             instance: new MarkovTextMethod(this.botApi, this.getRoute('').instance as WriteMarkovMethod)
         });
-    
+
         this.routeMap.push({
-            command: '/umarkov', 
+            command: '/um',
             instance: new UserMarkovTextMethod(this.botApi, this.getRoute('').instance as WriteMarkovMethod)
         });
-        
+
     }
 
     getRoute(command: string): TelegramRouter {
@@ -73,5 +73,5 @@ export class TelegramBot {
 
         this.getRoute('').instance.process(message);
     }
-    
+
 }
