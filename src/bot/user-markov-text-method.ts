@@ -89,17 +89,16 @@ export class UserMarkovTextMethod extends AbstractMethod {
         memberMessages = memberMessages.filter(val => val.senderId == user.id);
         // memberMessages = memberMessages.slice(memberMessages.length - 50);
 
-        let messageFullText = memberMessages.map(message => message.text).join(' ');
+        let sentenceArray = memberMessages.map(message => message.text);
 
-        const sentenceArray = Utils.stringToSentenceArray(messageFullText);
-        if (sentenceArray.length < 5) {
+        if (memberMessages.length < 5) {
             return;
         }
         let markovSentences = MarkovTextMethod.generateUniqueText(sentenceArray, 5, this.defaultOptions, options);
         let rngScore = markovSentences.map(val => val.score).reduce((a, b) => a + b, 0 )
 
         let markovText = markovSentences.map(val => val.string).join(' ');
-        markovText += `\n\n*count*: ${memberMessages.length} msgs; ${sentenceArray.length} sentences`;
+        markovText += `\n\n*count*: ${memberMessages.length} msgs;`;
         markovText += `\n*rng score*: ${rngScore} to ${markovSentences.length} sentences`;
         markovText += `\n${user.username ? '@' + user.username : ''} - ${user.first_name || ''} ${user.last_name || ''}`;
 

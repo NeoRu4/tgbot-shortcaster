@@ -68,7 +68,8 @@ export class MarkovTextMethod extends AbstractMethod {
 
             const genText = markov.generateSentence(options);
 
-            if (controlStrings.map(val => val.string).includes(genText.string)) {
+            if (controlStrings.map(val => val.string).includes(genText.string) ||
+                genText.score < 1) {
                 sentenceCount++;
                 continue;
             }
@@ -121,16 +122,14 @@ export class MarkovTextMethod extends AbstractMethod {
 
         let messageFullText = dataFile.map(message => {
             return message.text
-        }).join(' ');
+        });
 
-        const sentenceArray = Utils.stringToSentenceArray(messageFullText)
-
-        let markovSentences = MarkovTextMethod.generateUniqueText(sentenceArray, sentenceCount, this.defaultOptions, this.generateOptions);
+        let markovSentences = MarkovTextMethod.generateUniqueText(messageFullText, sentenceCount, this.defaultOptions, this.generateOptions);
 
         let rngScore = markovSentences.map(val => val.score).reduce((a, b) => a + b, 0 )
 
         let markovText = markovSentences.map(val => val.string).join(' ');
-        markovText += `\n\n*count*: ${dataFile.length} msgs; ${sentenceArray.length} sentences`;
+        markovText += `\n\n*count*: ${dataFile.length} msgs`;
         markovText += `\n*rng score*: ${rngScore} to ${markovSentences.length} sentences`
 
         this.api.sendMessage({
