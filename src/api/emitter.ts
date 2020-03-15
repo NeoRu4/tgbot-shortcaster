@@ -24,18 +24,18 @@ export class TelegramBotEmitter extends EventEmitter
     public readonly api: API.TelegramBotRaw;
 
     /**
-     * When this flag is true, when this object recives an update, 
+     * When this flag is true, when this object recives an update,
      * immediately re-send another getUpdates request for next updates.
      */
     private continueUpdates: boolean = false;
 
     /**
-     * Last update_id received. Update identifiers 
-     * start from a certain positive number and increase sequentially. 
-     * This ID becomes especially handy if you’re using Webhooks, 
-     * since it allows you to ignore repeated updates or to restore 
-     * the correct update sequence, should they get out of order. 
-     * If there are no new updates for at least a week, then identifier 
+     * Last update_id received. Update identifiers
+     * start from a certain positive number and increase sequentially.
+     * This ID becomes especially handy if you’re using Webhooks,
+     * since it allows you to ignore repeated updates or to restore
+     * the correct update sequence, should they get out of order.
+     * If there are no new updates for at least a week, then identifier
      * of the next update will be chosen randomly instead of sequentially.
      */
     private lastUpdateId: number = 0;
@@ -66,8 +66,8 @@ export class TelegramBotEmitter extends EventEmitter
 
     /**
      * Stop this object form the listening state.
-     * After the response of the getUpdates request it 
-     * will not make any other requests.     * 
+     * After the response of the getUpdates request it
+     * will not make any other requests.     *
      */
     public stop ()
     {
@@ -77,11 +77,10 @@ export class TelegramBotEmitter extends EventEmitter
     }
 
     /**
-     * Continue to make getUpdates requests and 
+     * Continue to make getUpdates requests and
      * emit the appropriate event until the flag continueUpdates is true.
      */
-    private async dispatchUpdates ()
-    {
+    private async dispatchUpdates () {
 
         this.continueUpdates = true;
 
@@ -90,22 +89,24 @@ export class TelegramBotEmitter extends EventEmitter
             try
             {
                 // Obtains update after the last that I have received
-                let updates = await this.api.getUpdates ({ timeout: 600, offset: this.lastUpdateId + 1 });
+                let updates = await this.api.getUpdates ({
+                    timeout: 600,
+                    offset: this.lastUpdateId + 1
+                }).toPromise();
 
                 for (let update of updates) {
                     for (let key in update) {
                         if (key !== 'update_id') {
                             this.emit (key, (update as any)[key]);
                         }
-                    }  
-                } 
+                    }
+                }
 
-                // Cambia l'ID dell'ultimo aggiornamento
                 if (updates.length) {
                     this.lastUpdateId = updates[updates.length-1].update_id;
                 }
             } catch (error) {
-                // It emits the error raised in the getUpdates request.
+
                 this.emit ('error', error);
             }
         }

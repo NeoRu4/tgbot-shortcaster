@@ -105,7 +105,7 @@ export class MarkovTextMethod extends AbstractMethod {
             text: markovText,
             parse_mode: 'markdown',
             reply_to_message_id: message.reply_to_message.message_id
-        });
+        }).subscribe();
     }
 
     sendMarkovText(chatId: number, sentenceCount: number, msgLimit: number) {
@@ -136,7 +136,7 @@ export class MarkovTextMethod extends AbstractMethod {
             chat_id: chatId,
             text: markovText,
             parse_mode: 'markdown'
-        })
+        }).subscribe();
     }
 
 

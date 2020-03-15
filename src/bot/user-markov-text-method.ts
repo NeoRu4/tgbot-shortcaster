@@ -64,7 +64,7 @@ export class UserMarkovTextMethod extends AbstractMethod {
                 chat_id: chatId,
                 text: `Пользователь "${userName}" не найден.`,
                 parse_mode: 'markdown'
-            });
+            }).subscribe();
 
             return;
         }
@@ -106,7 +106,7 @@ export class UserMarkovTextMethod extends AbstractMethod {
             chat_id: chatId,
             text: markovText,
             parse_mode: 'markdown'
-        })
+        }).subscribe();
     }
 
     updateChatUsersList(chatId: number) {
@@ -122,7 +122,7 @@ export class UserMarkovTextMethod extends AbstractMethod {
             this.api.getChatMember({
                 chat_id: chatId,
                 user_id: val
-            }).then((member: ChatMember) => {
+            }).subscribe((member: ChatMember) => {
                 this.chatMemberSubject.next(member.user);
             });
         });
@@ -161,7 +161,7 @@ export class UserMarkovTextMethod extends AbstractMethod {
         try {
             const file = fs.readFileSync(this.fileName, 'utf8');
             let userArray = JSON.parse(file)
-                .sort((a,b) => {
+                .sort((a, b) => {
                     return a?.username?.length - b?.username?.length
                 });
 

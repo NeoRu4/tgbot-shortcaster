@@ -4,6 +4,17 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "type": "typescript",
+            "tsconfig": "tsconfig.json",
+            "problemMatcher": [
+                "$tsc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
             "type": "npm",
             "script": "install",
             "problemMatcher": []
