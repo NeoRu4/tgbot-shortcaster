@@ -26,6 +26,7 @@ export class TelegramBot {
 
         this.botApi.on('error', message => {
             console.error(message);
+            // this.botApi.stop();
         });
 
         this.routeMap = [

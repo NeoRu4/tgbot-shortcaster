@@ -1,5 +1,9 @@
+import * as fs from 'fs';
 import * as Https  from 'https';
-import { Observable } from 'rxjs';
+import * as createHttpsProxyAgent from 'https-proxy-agent';
+import { Observable, Subscriber } from 'rxjs';
+import { ProxyServer } from './proxy-server';
+import { Agent } from 'http';
 
 export interface BotSettings {
     token: string,
@@ -12,13 +16,24 @@ export interface BotSettings {
 export class TelegramBotRaw
 {
 
-
+    private certificate: {cert: Buffer | string, key: Buffer | string};
+    private proxyServer: ProxyServer;
+    private proxyAgent: Agent;
 
     public setProxy(url: string) {
 
-        const _url = url.split(':');
+        if (!url) {
+            return;
+        }
 
+        const socket = url.split(':');
+
+        this.proxyAgent = createHttpsProxyAgent({
+            host: socket[0],
+            port: socket[1]
+        });
     }
+
 
     /**
      * Each bot is given a unique authentication token when it is created.
@@ -33,10 +48,7 @@ export class TelegramBotRaw
     constructor (settings: BotSettings)
     {
         this.token = settings.token;
-
-        if (settings.proxy) {
-            this.setProxy(settings.proxy);
-        }
+        this.setProxy(settings.proxy);
     }
 
     private boundary = 'FkEDmYLIktZjh6eaHViDpH0bbx';
@@ -66,6 +78,44 @@ export class TelegramBotRaw
         return Buffer.concat (parts);
     }
 
+    private _requestTelegramApi(observer: Subscriber<any>, httpsOptions: object, body: Buffer) {
+
+        let request = Https.request (httpsOptions, (response) =>
+        {
+
+            let chunks: Array<Buffer> = [];
+
+            response.on ('error', (error: Error ) => observer.error (error));
+            response.on ('data',  (chunk: Buffer) => chunks.push (chunk));
+
+            response.on ('end', () =>
+            {
+                try
+                {
+                    let json = Buffer.concat (chunks).toString('utf8');
+
+                    let parsed = JSON.parse (json);
+
+                    if (parsed.ok) {
+                        observer.next (parsed.result);
+                        return;
+                    }
+
+                    observer.error (parsed.description);
+                }
+
+                catch (error)
+                {
+                    observer.error (error);
+                }
+            });
+        });
+
+        request.on ('error', error => observer.error (error));
+        request.write (body);
+        request.end ();
+    }
+
     /**
      * Make an HTTPS POST multipart/form-data request to the Telegram server
      */
@@ -74,56 +124,24 @@ export class TelegramBotRaw
         const body: Buffer = this._makeRequestParams(params);
 
         let httpsOptions =  {
-
+            hostname: 'api.telegram.org',
+            // host: '149.154.167.220'
+            // port: 443,
             method: 'POST',
             path: '/bot' + this.token + '/' + method,
-            hostname: 'api.telegram.org',
+            agent: this.proxyAgent,
+            timeout: 10000,
+            followRedirect: true,
+            maxRedirects: 10,
             headers:
             {
                 'Content-Type': 'multipart/form-data; boundary=' + this.boundary,
                 'Content-Length': body.byteLength
-            },
-
+            }
         }
 
-        return new Observable ((observer) =>
-        {
-
-            let request = Https.request (httpsOptions, (response) =>
-            {
-
-                let chunks: Array<Buffer> = [];
-
-                response.on ('error', (error: Error ) => observer.error (error));
-                response.on ('data',  (chunk: Buffer) => chunks.push (chunk));
-
-                response.on ('end', () =>
-                {
-                    try
-                    {
-                        let json = Buffer.concat (chunks).toString('utf8');
-
-                        let parsed = JSON.parse (json);
-
-                        if (parsed.ok) {
-                            observer.next (parsed.result);
-                            return;
-                        }
-
-                        observer.error (parsed.description);
-                    }
-
-                    catch (error)
-                    {
-                        observer.error (error);
-                    }
-                });
-            });
-
-            request.on ('error', error => observer.error (error));
-            console.log(body.toString('utf8'))
-            request.write (body);
-            request.end ();
+        return new Observable ((observer) => {
+            this._requestTelegramApi(observer, httpsOptions, body);
         });
     }
 
