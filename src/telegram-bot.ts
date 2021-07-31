@@ -3,47 +3,52 @@ import { Message } from "./api/api";
 import { WriteMarkovMethod } from "./bot/write-markov-method";
 import { MarkovTextMethod } from "./bot/markov-text-method";
 import { AbstractMethod } from "./bot/abstract/abstract-method";
+import { SQLiteService } from "./service/sql-lite";
+
 import { UserMarkovTextMethod } from "./bot/user-markov-text-method";
-const Config = require('../config.json');
 
 export interface TelegramRouter {
     command: string;
     instance: AbstractMethod;
 }
 
+
 export class TelegramBot {
 
-    private botApi: TelegramBotEmitter;
+    botApi: TelegramBotEmitter;
+    database: SQLiteService;
 
     private routeMap: Array<TelegramRouter>;
 
-
     constructor() {
-
-        this.botApi = new TelegramBotEmitter(Config.bot);
-
+        
+        
+        this.database = new SQLiteService()
+        this.botApi = new TelegramBotEmitter({token: process.env.TELEGRAM_API_KEY});
+        
         this.botApi.on('message', message => this.messageHandler(message));
-
+        
         this.botApi.on('error', message => {
             console.error(message);
             // this.botApi.stop();
         });
+        
 
         this.routeMap = [
             {
                 command: '',
-                instance: new WriteMarkovMethod(this.botApi)
+                instance: new WriteMarkovMethod(this)
             },
         ];
 
         this.routeMap.push({
             command: '/m',
-            instance: new MarkovTextMethod(this.botApi, this.getRoute('').instance as WriteMarkovMethod)
+            instance: new MarkovTextMethod(this)
         });
 
         this.routeMap.push({
-            command: '/um',
-            instance: new UserMarkovTextMethod(this.botApi, this.getRoute('').instance as WriteMarkovMethod)
+            command: '/mu',
+            instance: new UserMarkovTextMethod(this)
         });
 
     }
@@ -60,7 +65,7 @@ export class TelegramBot {
        if (!text) {
            return;
        }
-
+       
         if (text.startsWith('/')) {
 
             const params = text.split(' ');

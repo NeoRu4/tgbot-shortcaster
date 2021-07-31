@@ -1,182 +1,93 @@
 import { AbstractMethod }  from './abstract/abstract-method';
-import { TelegramBotEmitter } from '../api/emitter';
-import { Message, ChatMember, User } from '../api/api';
+import { Message, User } from '../api/api';
 import { WriteMarkovMethod } from './write-markov-method';
 import { Subject } from 'rxjs';
-import {bufferTime, filter} from 'rxjs/operators'
-import * as fs from 'fs';
+import {take} from 'rxjs/operators'
 import { MarkovGenerateOptions, MarkovConstructorOptions } from '../markov';
+import { TelegramBot } from '../telegram-bot';
 import { Utils } from '../utils/utils';
-import { MarkovTextMethod } from './markov-text-method';
 
 export class UserMarkovTextMethod extends AbstractMethod {
 
     private writeMarkov: WriteMarkovMethod;
 
-    private readonly DATA_DIR = './database/user/';
 
     chatMemberSubject: Subject<User> = new Subject();
 
-    constructor(_apiEmmiter: TelegramBotEmitter, writeMarkovInstance: WriteMarkovMethod) {
+    constructor(_telegramBot: TelegramBot) {
 
-        super(_apiEmmiter);
-
-        this.writeMarkov = writeMarkovInstance;
-
-        this.chatMemberSubject.pipe(
-            bufferTime(1000),
-            filter(list => !!list.length)
-        ).subscribe(chatMemberList => {
-
-            console.log('pushing', chatMemberList);
-            this.appendMessageDataFile(chatMemberList);
-        });
+        super(_telegramBot);
     }
 
     defaultOptions: MarkovConstructorOptions = {
-        stateSize: 2
+        stateSize: 1
     };
+
+    options: MarkovGenerateOptions = {
+        maxTries: 20,
+        randFunc: Math.random,
+        filter: (result) => {
+            return (/[.!?]$/g).test(result.string)
+        }
+    }
 
     process(message: Message) {
 
         const text = message.text.trim();
 
-        if (message.from.username != 'neoflex4') {
-            return;
-        }
-
         const params = text.split(' ', 2);
         const chatId = message.chat.id;
         console.log(chatId, params)
 
-        const userName = params[1]?.trim()?.replace('@', '');
-
-        if (!userName) {
-            return;
-        }
-
-        let user = this.findUser(userName);
-
-        if (!user) {
-            this.updateChatUsersList(chatId);
-
-            this.api.sendMessage({
-                chat_id: chatId,
-                text: `Пользователь "${userName}" не найден.`,
-                parse_mode: 'markdown'
-            }).subscribe();
-
-            return;
-        }
-
-        console.log('found user', user)
-
-        this.sendMarkovText(chatId, user);
+        this.sendMarkovText(chatId);
 
     }
 
-    sendMarkovText(chatId: number, user: User) {
+    async sendMarkovText(chatId: number) {
 
-        const options: MarkovGenerateOptions = {
-            maxTries: 25,
-            randFunc: Math.random,
-            filter: (result) => {
-                return (/[.!?]$/g).test(result.string)
-              }
+        let message = []
+        let userList = await this.getChatUsersList(chatId, 100)
+        let messages = await this.database.getLastTextByChat(chatId, 100)
+
+        for (const user of userList) {
+            const userMessages = messages.filter(val => +val.senderId == +user.id);
+            const sentenceArray = userMessages.map(message => {
+                return message.text
+            });
+    
+            if (sentenceArray.length <= 2) {
+                continue
+            }
+            
+            const markovSentences = Utils.generateUniqueText(sentenceArray, 2, this.defaultOptions, this.options);
+            const markovText = markovSentences.map(val => val.string).join(' ');
+
+            message.push(`*${user.first_name}*: ${markovText}\n\n`);
         }
-
-        let memberMessages = this.writeMarkov.readMessageDataFile(chatId);
-        memberMessages = memberMessages.filter(val => val.senderId == user.id);
-        // memberMessages = memberMessages.slice(memberMessages.length - 50);
-
-        let sentenceArray = memberMessages.map(message => message.text);
-
-        if (memberMessages.length < 5) {
-            return;
-        }
-        let markovSentences = MarkovTextMethod.generateUniqueText(sentenceArray, 5, this.defaultOptions, options);
-        let rngScore = markovSentences.map(val => val.score).reduce((a, b) => a + b, 0 )
-
-        let markovText = markovSentences.map(val => val.string).join(' ');
-        markovText += `\n\n*count*: ${memberMessages.length} msgs;`;
-        markovText += `\n*rng score*: ${rngScore} to ${markovSentences.length} sentences`;
-        markovText += `\n${user.username ? '@' + user.username : ''} - ${user.first_name || ''} ${user.last_name || ''}`;
-
         this.api.sendMessage({
             chat_id: chatId,
-            text: markovText,
+            text: message.join(''),
             parse_mode: 'markdown'
         }).subscribe();
     }
 
-    updateChatUsersList(chatId: number) {
+    async getChatUsersList(chatId: number, messagesLimit: number): Promise<Array<User>> {
 
-        let userIds = this.writeMarkov.readMessageDataFile(chatId)
-            .map(val => val.senderId)
-            .filter((value, index, self) => {
-                return self.indexOf(value) === index; //Unique
-            });
+        let userIds = await this.database.getUserIdsFromChat(chatId, messagesLimit)
+        let userList = []
 
-        userIds.forEach(val => {
-
-            this.api.getChatMember({
+        for (const val of userIds) {
+                        
+            const chatMember = (await this.api.getChatMember({
                 chat_id: chatId,
-                user_id: val
-            }).subscribe((member: ChatMember) => {
-                this.chatMemberSubject.next(member.user);
-            });
-        });
-    }
+                user_id: val.senderId
+            }).pipe(take(1)).toPromise())
 
-    appendMessageDataFile(includeData: Array<User>) {
-
-        let userData = this.readUserDataFile();
-        userData = userData
-                .filter(user =>
-                    !includeData.find(_user => _user.id == user.id)
-                )
-                .concat(includeData);
-
-
-        fs.writeFileSync(
-            this.fileName,
-            JSON.stringify(userData),
-            {flag: 'w+', encoding: 'utf-8'}
-        );
-
-        console.log('Write user file');
-    }
-
-    findUser(search: string): User {
-        return this.readUserDataFile()
-            .find(value => {
-                return value.username?.startsWith(search) ||
-                    value.first_name?.startsWith(search) ||
-                    value.last_name?.startsWith(search)
-            })
-    }
-
-    readUserDataFile(): Array<User> {
-
-        try {
-            const file = fs.readFileSync(this.fileName, 'utf8');
-            let userArray = JSON.parse(file)
-                .sort((a, b) => {
-                    return a?.username?.length - b?.username?.length
-                });
-
-            return userArray;
-
-        } catch (err) {
-            return [];
+            userList.push(chatMember.user)
         }
+        
+        return userList
     }
 
-    get fileName(): string {
-        let file = this.DATA_DIR + 'chat-users.json';
-        file = file.replace(/[\\]/g, '/');
-
-        return file
-    }
 
 }

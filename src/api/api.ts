@@ -1,23 +1,21 @@
-import * as fs from 'fs';
 import * as Https  from 'https';
-import * as createHttpsProxyAgent from 'https-proxy-agent';
 import { Observable, Subscriber } from 'rxjs';
-import { ProxyServer } from './proxy-server';
 import { Agent } from 'http';
 
 export interface BotSettings {
     token: string,
-    proxy?: string,
+    // proxy?: string,
 }
+
 
 /**
  * All official methods of the Telegram Bot API without abstraction.
+ * Copy of api
  */
 export class TelegramBotRaw
 {
 
     private certificate: {cert: Buffer | string, key: Buffer | string};
-    private proxyServer: ProxyServer;
     private proxyAgent: Agent;
 
     public setProxy(url: string) {
@@ -28,10 +26,10 @@ export class TelegramBotRaw
 
         const socket = url.split(':');
 
-        this.proxyAgent = createHttpsProxyAgent({
-            host: socket[0],
-            port: socket[1]
-        });
+        // this.proxyAgent = createHttpsProxyAgent({
+        //     host: socket[0],
+        //     port: socket[1]
+        // });
     }
 
 
@@ -48,10 +46,10 @@ export class TelegramBotRaw
     constructor (settings: BotSettings)
     {
         this.token = settings.token;
-        this.setProxy(settings.proxy);
+       // this.setProxy(settings.proxy);
     }
 
-    private boundary = 'FkEDmYLIktZjh6eaHViDpH0bbx';
+    private boundary = 'FkEDmYLIktZjh6eaHViDpH0bb455';
 
     private _makeRequestParams( params: { [s: string]: any }): Buffer {
 
@@ -90,22 +88,17 @@ export class TelegramBotRaw
 
             response.on ('end', () =>
             {
-                try
-                {
-                    let json = Buffer.concat (chunks).toString('utf8');
+                try {
+                    let json = Buffer.concat(chunks).toString('utf8');
 
-                    let parsed = JSON.parse (json);
-
+                    let parsed = JSON.parse(json);
+                    
                     if (parsed.ok) {
                         observer.next (parsed.result);
                         return;
                     }
-
                     observer.error (parsed.description);
-                }
-
-                catch (error)
-                {
+                } catch (error) {
                     observer.error (error);
                 }
             });
@@ -125,11 +118,8 @@ export class TelegramBotRaw
 
         let httpsOptions =  {
             hostname: 'api.telegram.org',
-            // host: '149.154.167.220'
-            // port: 443,
             method: 'POST',
             path: '/bot' + this.token + '/' + method,
-            agent: this.proxyAgent,
             timeout: 10000,
             followRedirect: true,
             maxRedirects: 10,
@@ -138,6 +128,10 @@ export class TelegramBotRaw
                 'Content-Type': 'multipart/form-data; boundary=' + this.boundary,
                 'Content-Length': body.byteLength
             }
+        }
+
+        if (this.proxyAgent) {
+            httpsOptions['agent'] = this.proxyAgent
         }
 
         return new Observable ((observer) => {

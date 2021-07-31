@@ -1,3 +1,5 @@
+import { Markov, MarkovConstructorOptions, MarkovGenerateOptions, MarkovResult } from "../markov";
+
 export class Utils {
 
     //Если в предыдущей строке есть знаки препинания
@@ -63,4 +65,31 @@ export class Utils {
         return message
     }
     
+
+    static generateUniqueText(sentenceArray: Array<string>, sentenceCount: number, constructorOptions: MarkovConstructorOptions, options: MarkovGenerateOptions): Array<MarkovResult> {
+
+        let markov = new Markov(sentenceArray, constructorOptions);
+        markov.buildLexemeTable();
+
+        let controlStrings: Array<MarkovResult> = [];
+
+        let usageCount = 0
+        const maxUsageCount = sentenceCount * 2
+
+        for (let index = 0; (index < sentenceCount || usageCount <= maxUsageCount); index++) {
+
+            const genText = markov.generateSentence(options);
+            usageCount++;
+
+            if (controlStrings.map(val => val.string).includes(genText.string) ||
+                genText.score == 0) {
+                sentenceCount++;
+                continue;
+            }
+
+            controlStrings.push(genText);
+        }
+
+        return controlStrings.filter((v, i, a) => a.indexOf(v) === i);
+    }
 }

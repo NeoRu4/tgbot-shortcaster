@@ -1,104 +1,67 @@
-import * as fs from 'fs';
 import { Utils } from '../utils/utils';
 import { AbstractMethod }  from './abstract/abstract-method';
-import { TelegramBotEmitter } from '../api/emitter';
 import { Message } from '../api/api';
-
-export interface DataMessage {
-    id: number;
-    senderId: number;
-    // chatId: number;
-    // date: number;
-    text: string;
-}
+import { TelegramBot } from '../telegram-bot';
+import { DataMessage } from '../model/DataMessage';
 
 export class WriteMarkovMethod extends AbstractMethod {
 
-    private readonly BATCH_SIZE = 10;
-    private readonly DATA_DIR = './database/';
-    private messages: Map<number, Array<DataMessage>> = new Map();
+    constructor(_telegramBot: TelegramBot) {
 
-    constructor(_apiEmmiter: TelegramBotEmitter) {
-
-        super(_apiEmmiter);
+        super(_telegramBot);
 
         process.on('SIGINT', (code) => {
 
-            const chatIds = Array.from(this.messages.keys());
-
-            chatIds.forEach(chatId => {
-                this.appendMessageDataFile(chatId, this.messages.get(chatId));
-            });
+            this.database.addMessageToDatabase(this.joinLastMessage());
 
             console.log(`Exit with code: ${code}`);
             process.exit();
         });
     }
     
-    process(message: Message) {
+    lastMessages: Array<DataMessage> = []
 
+    process(message: Message) {
+        
         if (!message.from.id) {
             return;
         }
 
-        console.log(message.chat.id, message.from.first_name + ':', message.text)
-
         const chatId = message.chat.id;
+        const lastLenght = this.lastMessages.length
+        
         const dataMsg: DataMessage = {
             id: message.message_id,
             senderId: message.from.id,
-            // chatId: chatId,
-            // date: message.date,
-            text: Utils.modifyMessage(message.text)
+            chatId: chatId,
+            date: message.date,
+            text: message.text
+        }
+        
+        if (lastLenght > 0 && this.lastMessages[lastLenght - 1].senderId != dataMsg.senderId) {
+            this.database.addMessageToDatabase(this.joinLastMessage())
+            this.lastMessages = []
+        }
+        console.log(chatId, `${message.from.first_name}(${this.lastMessages.length}):`, message.text)  
+        
+        this.lastMessages.push(dataMsg)
+    }
+
+
+    joinLastMessage(): DataMessage {
+
+        const lastLenght = this.lastMessages.length
+
+        if (lastLenght == 0) {
+            return
         }
 
+        let lastMessage = this.lastMessages[lastLenght - 1]
+        lastMessage.text = Utils.modifyMessage(this.lastMessages.map(val => val.text).join(' '))
 
-        let currentChatMessages = this.messages.get(chatId) || [];
-        currentChatMessages.push(dataMsg)
-        this.messages.set(chatId, currentChatMessages);
-
-        if (currentChatMessages.length >= this.BATCH_SIZE) {
-
-            this.appendMessageDataFile(chatId, currentChatMessages);
-            this.messages.set(chatId, []);
-        }
+        return lastMessage
     }
 
 
-    appendMessageDataFile(chatId: number, chatMsgs: Array<DataMessage>) {
-
-        let msgs = this.readMessageDataFile(chatId);
-        msgs = msgs
-                .filter(msg => !chatMsgs.find(incMsg => msg.id == incMsg.id))
-                .concat(chatMsgs);
-
-        
-        fs.writeFileSync(
-            this.fileName(chatId), 
-            JSON.stringify(msgs),
-            {flag: 'w+', encoding: 'utf-8'}
-        );
-
-        console.log('Write file chat:', chatId);
-    }
-
-
-    readMessageDataFile(chatId: number): Array<DataMessage> {
-        
-        try {
-            const file = fs.readFileSync(this.fileName(chatId), 'utf8');
-            return JSON.parse(file);
-
-        } catch (err) {
-            return [];
-        }
-    }
-
-    fileName(chatId:number) {
-        let file = this.DATA_DIR + 'chat' + chatId + '.json';
-        file = file.replace(/[\\]/g, '/');
-        
-        return file
-    }
     
 }

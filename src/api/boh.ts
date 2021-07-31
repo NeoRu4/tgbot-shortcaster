@@ -1,10 +1,5 @@
 import * as API from './api';
 
-class TelegramBotBoh
-{
-
-}
-
 export interface Chat
 {
     onMessage? (message: API.Message): Promise<any>;

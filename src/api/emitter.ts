@@ -1,6 +1,6 @@
-
 import * as API from './api';
 import { EventEmitter } from 'events';
+import { take } from 'rxjs/operators';
 
 export declare interface TelegramBotEmitter
 {
@@ -84,31 +84,30 @@ export class TelegramBotEmitter extends EventEmitter
 
         this.continueUpdates = true;
 
-        while (this.continueUpdates)
-        {
-            try
-            {
-                // Obtains update after the last that I have received
-                let updates = await this.api.getUpdates ({
-                    timeout: 600,
-                    offset: this.lastUpdateId + 1
-                }).toPromise();
+        while (this.continueUpdates) {
+                try {
 
-                for (let update of updates) {
-                    for (let key in update) {
-                        if (key !== 'update_id') {
-                            this.emit (key, (update as any)[key]);
+                    const rxQuery = this.api.getUpdates ({
+                        timeout: 600,
+                        offset: this.lastUpdateId + 1
+                    })
+
+                    const updates = (await rxQuery.pipe(take(1)).toPromise())
+
+                    for (let update of updates) {
+                        for (let key in update) {
+                            if (key !== 'update_id') {
+                                this.emit(key, (update as any)[key]);
+                            }
                         }
                     }
-                }
 
-                if (updates.length) {
-                    this.lastUpdateId = updates[updates.length-1].update_id;
+                    if (updates.length) {
+                        this.lastUpdateId = updates[updates.length-1].update_id;
+                    }
+                } catch (error) {
+                    this.emit ('error', error);
                 }
-            } catch (error) {
-
-                this.emit ('error', error);
-            }
         }
     }
 }

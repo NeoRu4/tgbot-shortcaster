@@ -1,5 +1,4 @@
 import { assignIn, cloneDeep, flatten, includes, isEmpty, isString, slice, some, uniqBy } from 'lodash'
-import { Observable } from 'rxjs';
 
 
 function getRandom<T>(array: T[], randFunc: () => number = Math.random): T | undefined {
@@ -25,7 +24,7 @@ export type MarkovResult = {
 }
 
 export type MarkovFragment = {
-  words: string
+  word: string
   refs: Array<{ string: string }>
 }
 
@@ -52,6 +51,7 @@ export class Markov {
     } else if (!data[0].hasOwnProperty('string')) {
       throw new Error('Объекты не строка');
     }
+    
     this.data = data as Array<{ string: string }>;
 
     this.options = this.defaultOptions;
@@ -86,14 +86,14 @@ export class Markov {
         const next = slice(words, i + stateSize, i + stateSize * 2).join(' ');
 
         if (!next || next.split(' ').length !== options.stateSize) {
-          continue;
+            continue;
         }
 
         if (this.lexemeTable.hasOwnProperty(curr)) {
           // если лексемой у лексемы есть цепочка
           this._makeWordsFragment(this.lexemeTable[curr], item, next);
         } else {
-          this.lexemeTable[curr] = [{ words: next, refs: [item] }];
+          this.lexemeTable[curr] = [{ word: next, refs: [item] }];
         }
       }
     })
@@ -102,20 +102,20 @@ export class Markov {
 
   private _makeWordsFragment(fragment: MarkovFragment[], item: {string: string},  joinedString: string ) {
 
-    const oldStartObj = fragment.find(o => o.words === joinedString);
+    const oldStartObj = fragment.find(o => o.word === joinedString);
     if (oldStartObj) {
       if (!includes(oldStartObj.refs, item)) {
         oldStartObj.refs.push(item);
       }
     } else {
-        fragment.push({ words: joinedString, refs: [item] });
+        fragment.push({ word: joinedString, refs: [item] });
     }
   }
 
   public generateSentence(options: MarkovGenerateOptions = {}): MarkovResult {
 
     if (isEmpty(this.lexemeTable)) {
-      throw new Error('Модель не обучена');
+        throw new Error('Модель не обучена');
     }
 
     const lexemeTable = cloneDeep(this.lexemeTable);
@@ -125,48 +125,49 @@ export class Markov {
     let tries: number;
 
     for (tries = 1; tries <= maxTries; tries++) {
-      let ended = false;
 
-      const arr = [getRandom(this.startWords, prng)!];
-      let score = 0
+        let ended = false;
 
-      for (let innerTries = 0; innerTries < maxTries; innerTries++) {
+        const arr = [getRandom(this.startWords, prng)!];
+        let score = 0
 
-        const block = arr[arr.length - 1]
-        const state: MarkovFragment = getRandom(lexemeTable[block.words], prng)
+        for (let innerTries = 0; innerTries < maxTries; innerTries++) {
 
-        if (!state) {
-          break
+            const block = arr[arr.length - 1]
+            const state: MarkovFragment = getRandom(lexemeTable[block.word], prng)
+
+            if (!state) {
+                break
+            }
+
+            arr.push(state)
+
+            score += lexemeTable[block.word].length - 1
+
+            if (some(this.endWords, { word: state.word })) {
+                ended = true
+                break
+            }
         }
 
-        arr.push(state)
+        const sentence = arr.map(o => o.word)
+            .join(' ')
+            .trim()
 
-        score += lexemeTable[block.words].length - 1
-
-        if (some(this.endWords, { words: state.words })) {
-          ended = true
-          break
+        const result = {
+            string: sentence,
+            score: score,
+            refs: uniqBy(flatten(arr.map(o => o.refs)), 'string'),
+            tries: tries
         }
-      }
 
-      const sentence = arr
-        .map(o => o.words)
-        .join(' ')
-        .trim()
+        if (!ended || (typeof(options.filter) === 'function' && !options.filter(result))) {
+            continue
+        }
 
-      const result = {
-        string: sentence,
-        score,
-        refs: uniqBy(flatten(arr.map(o => o.refs)), 'string'),
-        tries
-      }
-
-      if (!ended || (typeof(options.filter) === 'function' && !options.filter(result))) {
-        continue
-      }
-
-      return result
+        return result
     }
+
     throw new Error(`Failed to build a sentence after ${tries - 1} tries`)
   }
 

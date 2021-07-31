@@ -2,4 +2,9 @@ import { TelegramBot } from './src/telegram-bot';
 
 
 //Start bot
-new TelegramBot();
+try {
+    new TelegramBot();
+} catch (error) {
+    console.error(error)
+}
+
